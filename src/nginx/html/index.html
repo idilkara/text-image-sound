@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image and Sound Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #3498db;
+            margin-top: 20px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 15px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .result-section {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            border: 1px solid #eee;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 15px 0;
+        }
+        
+        audio {
+            width: 100%;
+            margin: 15px 0;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background-color: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .id-display {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image and Sound Generator</h1>
+        
+        <input type="text" id="prompt-input" placeholder="Enter prompt...">
+        
+        <button id="generate-image-btn">Generate Image</button>
+        
+        <div id="image-result" style="display: none;" class="result-section">
+            <h2>Generated Image</h2>
+            <img id="generated-image" alt="Generated image will appear here">
+            <p id="image-id" class="id-display"></p>
+            
+            <button id="generate-sound-btn">Generate Sound</button>
+        </div>
+        
+        <div id="sound-result" style="display: none;" class="result-section">
+            <h2>Generated Sound</h2>
+            <audio id="generated-sound" controls></audio>
+        </div>
+        
+        <div id="error-message" class="error" style="display: none;"></div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE_URL = '/api'; // Change this to your actual API URL
+        
+        // DOM Elements
+        const promptInput = document.getElementById('prompt-input');
+        const generateImageBtn = document.getElementById('generate-image-btn');
+        const generateSoundBtn = document.getElementById('generate-sound-btn');
+        const imageResult = document.getElementById('image-result');
+        const generatedImage = document.getElementById('generated-image');
+        const imageIdElement = document.getElementById('image-id');
+        const soundResult = document.getElementById('sound-result');
+        const generatedSound = document.getElementById('generated-sound');
+        const errorMessage = document.getElementById('error-message');
+        
+        // State variables
+        let imageId = null;
+        let isGeneratingImage = false;
+        let isGeneratingSound = false;
+        
+        // Event listeners
+        generateImageBtn.addEventListener('click', handleGenerateImage);
+        generateSoundBtn.addEventListener('click', handleGenerateSound);
+        
+        // Generate image function
+        async function handleGenerateImage() {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                showError('Please enter a prompt first');
+                return;
+            }
+            
+            setGeneratingImage(true);
+            hideError();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    imageId = data.image_id;
+                    displayImage(data.image_data, imageId);
+                } else {
+                    showError(data.error || 'Failed to generate image');
+                }
+            } catch (err) {
+                showError('Error connecting to server: ' + (err.message || 'Unknown error'));
+                console.error(err);
+            } finally {
+                setGeneratingImage(false);
+            }
+        }
+        
+        // Generate sound function
+        async function handleGenerateSound() {
+            if (!imageId) {
+                showError('No image has been generated yet');
+                return;
+            }
+            
+            const prompt = promptInput.value.trim();
+            setGeneratingSound(true);
+            hideError();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate-sound`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_id: imageId, prompt }),
+                });
+                
+                const contentType = response.headers.get('Content-Type');
+                
+                if (response.ok && contentType && contentType.includes('audio/wav')) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    displaySound(audioUrl);
+                } else {
+                    try {
+                        const errorData = await response.json();
+                        showError(errorData.error || 'Failed to generate sound');
+                    } catch (e) {
+                        showError('Failed to generate sound: Invalid server response');
+                    }
+                }
+            } catch (err) {
+                showError('Error connecting to server: ' + (err.message || 'Unknown error'));
+                console.error(err);
+            } finally {
+                setGeneratingSound(false);
+            }
+        }
+        
+        // Helper functions
+        function displayImage(imageData, id) {
+            generatedImage.src = `data:image/png;base64,${imageData}`;
+            imageIdElement.textContent = `Image ID: ${id}`;
+            imageResult.style.display = 'block';
+            soundResult.style.display = 'none'; // Hide sound if showing a new image
+        }
+        
+        function displaySound(soundUrl) {
+            generatedSound.src = soundUrl;
+            soundResult.style.display = 'block';
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+        
+        function setGeneratingImage(isLoading) {
+            isGeneratingImage = isLoading;
+            generateImageBtn.disabled = isLoading;
+            generateImageBtn.textContent = isLoading ? 'Generating Image...' : 'Generate Image';
+        }
+        
+        function setGeneratingSound(isLoading) {
+            isGeneratingSound = isLoading;
+            generateSoundBtn.disabled = isLoading;
+            generateSoundBtn.textContent = isLoading ? 'Generating Sound...' : 'Generate Sound';
+        }
+    </script>
+</body>
+</html>

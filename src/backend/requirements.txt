@@ -1,0 +1,11 @@
+flask
+Pillow
+torch
+diffusers
+transformers
+accelerate
+flask-cors
+numpy
+pydub
+hilbertcurve
+pymongo

@@ -1,0 +1,18 @@
+types {
+    text/html                             html htm shtml;
+    text/css                              css;
+    text/xml                              xml;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    application/javascript                js;
+    application/json                      json;
+    text/plain                            txt;
+    application/xml                       xml;
+    image/png                             png;
+    image/svg+xml                         svg;
+    application/font-woff2                woff2;
+    application/font-woff                 woff;
+    application/vnd.ms-fontobject         eot;
+    font/ttf                              ttf;
+    font/otf                              otf;
+}

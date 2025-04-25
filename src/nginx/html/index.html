@@ -98,12 +98,67 @@
             color: #7f8c8d;
             margin-bottom: 15px;
         }
+
+                /* Add these styles for the save button */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .save-button {
+            background-color: #27ae60;
+        }
+        
+        .save-button:hover {
+            background-color: #219955;
+        }
+        
+        .save-button.saved {
+            background-color: #e74c3c;
+        }
+        
+        .save-button.saved:hover {
+            background-color: #c0392b;
+        }
+
+        .navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .navigation h1 {
+        margin: 0;
+    }
+    
+    .view-all-link {
+        background-color: #3498db;
+        color: white;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: background-color 0.3s;
+    }
+    
+    .view-all-link:hover {
+        background-color: #2980b9;
+    }
+
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Image and Sound Generator</h1>
-        
+
+        <div class="navigation">
+            <h1>Image and Sound Generator</h1>
+            <a href="viewAll.html" class="view-all-link">View All Generated Images</a>
+        </div>
+    
+
         <input type="text" id="prompt-input" placeholder="Enter prompt...">
         
         <button id="generate-image-btn">Generate Image</button>
@@ -112,6 +167,12 @@
             <h2>Generated Image</h2>
             <img id="generated-image" alt="Generated image will appear here">
             <p id="image-id" class="id-display"></p>
+
+                
+            <div class="button-group">
+                <button id="save-image-btn" class="save-button">Save Image</button>
+              
+            </div>
             
             <button id="generate-sound-btn">Generate Sound</button>
         </div>
@@ -256,6 +317,63 @@
             generateSoundBtn.disabled = isLoading;
             generateSoundBtn.textContent = isLoading ? 'Generating Sound...' : 'Generate Sound';
         }
+
+
+           // Add these lines after other DOM elements
+    const saveImageBtn = document.getElementById('save-image-btn');
+    
+    // Add this to your event listeners
+    saveImageBtn.addEventListener('click', handleSaveImage);
+    
+    // Add this function to your JavaScript
+    async function handleSaveImage() {
+        if (!imageId) {
+            showError('No image to save');
+            return;
+        }
+        
+        const originalText = saveImageBtn.textContent;
+        saveImageBtn.textContent = 'Saving...';
+        saveImageBtn.disabled = true;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/save-image/${imageId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to save image');
+            }
+            
+            // Update button appearance
+            saveImageBtn.textContent = 'Saved!';
+            saveImageBtn.classList.add('saved');
+            
+      
+        } catch (err) {
+            showError('Error saving image: ' + (err.message || 'Unknown error'));
+            console.error(err);
+            saveImageBtn.textContent = originalText;
+            saveImageBtn.disabled = false;
+        }
+    }
+    
+    // Modify the displayImage function to reset the save button state
+    function displayImage(imageData, id) {
+        generatedImage.src = `data:image/png;base64,${imageData}`;
+        imageIdElement.textContent = `Image ID: ${id}`;
+        imageResult.style.display = 'block';
+        soundResult.style.display = 'none'; // Hide sound if showing a new image
+        
+        // Reset save button
+        saveImageBtn.textContent = 'Save Image';
+        saveImageBtn.classList.remove('saved');
+        saveImageBtn.disabled = false;
+    }
+
+
     </script>
 </body>
 </html>

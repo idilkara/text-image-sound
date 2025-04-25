@@ -21,19 +21,16 @@ DB_NAME = "image_sound_db"
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 images_collection = db["images"]
-sounds_collection = db['sounds']
 
 # Create TTL index for images collection (once at the start)
 images_collection.create_index(
     [("created_at", 1)],  # Index on 'created_at' field
-    expireAfterSeconds=300  # Documents will be deleted 300 seconds (5 minutes) after 'created_at'
+    expireAfterSeconds=300,  # Documents will be deleted 300 seconds (5 minutes) after 'created_at'
+
+    # dont expire if saved 
+    partialFilterExpression={"saved": False}  # Only apply TTL to documents with status 'completed'
 )
 
-# Create TTL index for sounds collection (once at the start)
-sounds_collection.create_index(
-    [("created_at", 1)],  # Index on 'created_at' field
-    expireAfterSeconds=300  # Documents will be deleted 300 seconds (5 minutes) after 'created_at'
-)
 
 print("TTL indexes created. Documents will be deleted after 5 minutes.")
 
@@ -84,7 +81,7 @@ def generate():
             'prompt': prompt,
             'image_data': img_byte_arr,
             'created_at': datetime.now(timezone.utc),
-            'status': 'completed'
+            'saved': False 
         }
         
         result = images_collection.insert_one(image_doc)
@@ -116,15 +113,8 @@ def generate_sound():
         if not image_doc:
             return jsonify({'error': 'Image not found'}), 404
 
-        # Create sound document in Mongo
-        sound_doc = {
-            'prompt': prompt,
-            'image_id': image_id,
-            'created_at': datetime.now(timezone.utc),
-        }
-        
-        sound_result = images_collection.insert_one(sound_doc)
-        sound_id = str(sound_result.inserted_id)
+
+        sound_id = image_id
 
         # Generate sound in memory
         sound_io = io.BytesIO()
@@ -132,7 +122,16 @@ def generate_sound():
 
         # Seek to the beginning of the byte stream before returning the response
         sound_io.seek(0)
-        
+
+        # Save sound to MongoDB to image collection - update the image document
+
+        images_collection.update_one(
+            {'_id': ObjectId(image_id)},
+            {'$set': {
+                'sound_data': sound_io.getvalue(),     
+            }}
+        )
+
         # Return the sound file as a response with correct content type
         return send_file(
             sound_io,  # Streamed byte data
@@ -146,6 +145,63 @@ def generate_sound():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/save-image/<image_id>', methods=['POST'])
+def save_image(image_id):
+
+    try:
+        # Find the image document by ID
+        image_doc = images_collection.find_one({'_id': ObjectId(image_id)})
+        if not image_doc:
+            return jsonify({'error': 'Image not found'}), 404
+
+        # Update the document to mark it as saved
+        images_collection.update_one(
+            {'_id': ObjectId(image_id)},
+            {'$set': {'saved': True}}
+        )
+        return jsonify({'message': 'Image saved successfully'}), 200
+
+    except Exception as e:
+        print(f"Error in save_image endpoint: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/getImages', methods=['GET'])
+def get_images():
+    try:
+        # Fetch all images from the database
+        images = list(images_collection.find({}, {
+            '_id': 1, 
+            'prompt': 1, 
+            'created_at': 1, 
+            'sound_data': 1,
+            'image_data': 1,
+            'saved': 1
+        }))
+
+        # Convert ObjectId to string and format datetime
+        for image in images:
+            image['_id'] = str(image['_id'])
+            image['created_at'] = image['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Convert binary image data to base64 for JSON response
+            if 'image_data' in image and image['image_data']:
+                image['image_data'] = base64.b64encode(image['image_data']).decode('utf-8')
+                
+            # Convert binary sound data to base64 for JSON response if it exists
+            if 'sound_data' in image and image['sound_data']:
+                image['sound_data'] = base64.b64encode(image['sound_data']).decode('utf-8')
+        
+        return jsonify(images), 200
+
+    except Exception as e:
+        print(f"Error in get_images endpoint: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+    
 
 if __name__ == '__main__':
 

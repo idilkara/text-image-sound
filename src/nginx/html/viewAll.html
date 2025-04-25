@@ -1,0 +1,543 @@
+.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - All Generated Images & Sounds</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-image {
+            position: relative;
+            overflow: hidden;
+            height: 200px;
+        }
+        
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .card-saved {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #27ae60;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .card-content {
+            padding: 15px;
+        }
+        
+        .card-prompt {
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            max-height: 60px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        
+        .card-date {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .card-actions button {
+            flex: 1;
+            margin: 0 5px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        
+        .card-actions button:first-child {
+            margin-left: 0;
+        }
+        
+        .card-actions button:last-child {
+            margin-right: 0;
+        }
+        
+        .audio-player {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+        
+        .error {
+            background-color: #fadbd8;
+            color: #c0392b;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #7f8c8d;
+        }
+        
+        .sort-options {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .sort-options label {
+            margin-right: 10px;
+        }
+        
+        .sort-options select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .filter-saved {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .filter-saved input {
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Image & Sound Gallery</h1>
+        <p>Browse all your generated content</p>
+    </div>
+    
+    <div class="actions">
+        <a href="index.html"><button>Create New</button></a>
+        <button id="refresh-btn">Refresh Gallery</button>
+    </div>
+    
+    <div class="sort-options">
+        <label for="sort-select">Sort by:</label>
+        <select id="sort-select">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+        </select>
+        
+        <div class="filter-saved">
+            <input type="checkbox" id="saved-only" />
+            <label for="saved-only">Show saved only</label>
+        </div>
+    </div>
+    
+    <div id="error-message" class="error" style="display: none;"></div>
+    
+    <div id="loading" class="loading">
+        Loading gallery...
+    </div>
+    
+    <div id="gallery" class="gallery" style="display: none;"></div>
+    
+    <div id="empty-state" class="empty-state" style="display: none;">
+        <p>No images found. Generate some from the main page!</p>
+        <a href="index.html"><button>Go to Generator</button></a>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE_URL = '/api'; // Change this to your actual API URL
+        
+        // DOM Elements
+        const gallery = document.getElementById('gallery');
+        const loading = document.getElementById('loading');
+        const emptyState = document.getElementById('empty-state');
+        const errorMessage = document.getElementById('error-message');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const sortSelect = document.getElementById('sort-select');
+        const savedOnlyCheckbox = document.getElementById('saved-only');
+        
+        // State variables
+        let allImages = [];
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', fetchImages);
+        refreshBtn.addEventListener('click', fetchImages);
+        sortSelect.addEventListener('change', renderGallery);
+        savedOnlyCheckbox.addEventListener('change', renderGallery);
+        
+        // Fetch all images from the API
+        async function fetchImages() {
+            showLoading();
+            hideError();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/getImages`);
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                
+                allImages = await response.json();
+                
+                if (allImages.length === 0) {
+                    showEmptyState();
+                } else {
+                    renderGallery();
+                }
+            } catch (error) {
+                showError(`Failed to load images: ${error.message}`);
+                console.error('Error fetching images:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Render the gallery with current sorting/filtering
+        function renderGallery() {
+            // Apply filters
+            let filteredImages = [...allImages];
+            
+            if (savedOnlyCheckbox.checked) {
+                filteredImages = filteredImages.filter(img => img.saved);
+            }
+            
+            // Apply sorting
+            const sortOrder = sortSelect.value;
+            filteredImages.sort((a, b) => {
+                const dateA = new Date(a.created_at);
+                const dateB = new Date(b.created_at);
+                
+                if (sortOrder === 'newest') {
+                    return dateB - dateA;
+                } else {
+                    return dateA - dateB;
+                }
+            });
+            
+            // Clear gallery
+            gallery.innerHTML = '';
+            
+            if (filteredImages.length === 0) {
+                showEmptyState();
+                return;
+            }
+            
+            // Create cards for each image
+            filteredImages.forEach(image => {
+                const card = createImageCard(image);
+                gallery.appendChild(card);
+            });
+            
+            // Show gallery
+            gallery.style.display = 'grid';
+            emptyState.style.display = 'none';
+        }
+        
+        // Create a card element for an image
+        function createImageCard(image) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // Image container
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'card-image';
+            
+            // Image element
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${image.image_data}`;
+            img.alt = 'Generated image';
+            imageContainer.appendChild(img);
+            
+            // Saved badge if applicable
+            if (image.saved) {
+                const savedBadge = document.createElement('div');
+                savedBadge.className = 'card-saved';
+                savedBadge.textContent = 'Saved';
+                imageContainer.appendChild(savedBadge);
+            }
+            
+            card.appendChild(imageContainer);
+            
+            // Card content
+            const content = document.createElement('div');
+            content.className = 'card-content';
+            
+            // Prompt
+            const prompt = document.createElement('div');
+            prompt.className = 'card-prompt';
+            prompt.textContent = image.prompt;
+            prompt.title = image.prompt; // For tooltip on hover
+            content.appendChild(prompt);
+            
+            // Date
+            const date = document.createElement('div');
+            date.className = 'card-date';
+            date.textContent = `Created: ${image.created_at}`;
+            content.appendChild(date);
+            
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'card-actions';
+            
+            // Generate sound button (only if no sound exists)
+            const soundBtn = document.createElement('button');
+            if (image.sound_data) {
+                soundBtn.textContent = 'Play Sound';
+                soundBtn.addEventListener('click', () => toggleSoundPlayer(image, content));
+            } else {
+                soundBtn.textContent = 'Generate Sound';
+                soundBtn.addEventListener('click', () => generateSound(image._id, image.prompt, content));
+            }
+            actions.appendChild(soundBtn);
+            
+            
+            content.appendChild(actions);
+            card.appendChild(content);
+            
+            return card;
+        }
+        
+        
+        // Generate sound for an image
+        async function generateSound(imageId, prompt, contentElement) {
+            const soundBtn = contentElement.querySelector('button:nth-child(2)');
+            soundBtn.textContent = 'Generating...';
+            soundBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate-sound`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_id: imageId, prompt })
+                });
+                
+                const contentType = response.headers.get('Content-Type');
+                
+                if (response.ok && contentType && contentType.includes('audio/wav')) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Create audio player
+                    const audioPlayer = document.createElement('audio');
+                    audioPlayer.className = 'audio-player';
+                    audioPlayer.controls = true;
+                    audioPlayer.src = audioUrl;
+                    
+                    // Add player before the actions
+                    contentElement.insertBefore(audioPlayer, contentElement.querySelector('.card-actions'));
+                    
+                    // Update the button
+                    soundBtn.textContent = 'Play Sound';
+                    soundBtn.disabled = false;
+                    soundBtn.onclick = () => {
+                        if (audioPlayer.paused) {
+                            audioPlayer.play();
+                            soundBtn.textContent = 'Pause Sound';
+                        } else {
+                            audioPlayer.pause();
+                            soundBtn.textContent = 'Play Sound';
+                        }
+                    };
+                    
+                    // Refresh the gallery to get updated sound data
+                    fetchImages();
+                    
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || 'Failed to generate sound');
+                }
+            } catch (error) {
+                showError(`Failed to generate sound: ${error.message}`);
+                console.error('Error generating sound:', error);
+                soundBtn.textContent = 'Retry Sound';
+                soundBtn.disabled = false;
+            }
+        }
+        
+        // Toggle sound player for images that already have sound
+        function toggleSoundPlayer(image, contentElement) {
+            const soundBtn = contentElement.querySelector('button:nth-child(2)');
+            
+            // Check if audio player already exists
+            let audioPlayer = contentElement.querySelector('.audio-player');
+            
+            if (audioPlayer) {
+                // Toggle existing player
+                if (audioPlayer.paused) {
+                    audioPlayer.play();
+                    soundBtn.textContent = 'Pause Sound';
+                } else {
+                    audioPlayer.pause();
+                    soundBtn.textContent = 'Play Sound';
+                }
+            } else {
+                // Create new audio player
+                const audioUrl = URL.createObjectURL(
+                    b64toBlob(image.sound_data, 'audio/wav')
+                );
+                
+                audioPlayer = document.createElement('audio');
+                audioPlayer.className = 'audio-player';
+                audioPlayer.controls = true;
+                audioPlayer.src = audioUrl;
+                
+                // Add player before the actions
+                contentElement.insertBefore(audioPlayer, contentElement.querySelector('.card-actions'));
+                
+                // Play and update button
+                audioPlayer.play();
+                soundBtn.textContent = 'Pause Sound';
+                
+                // Update click handler
+                soundBtn.onclick = () => {
+                    if (audioPlayer.paused) {
+                        audioPlayer.play();
+                        soundBtn.textContent = 'Pause Sound';
+                    } else {
+                        audioPlayer.pause();
+                        soundBtn.textContent = 'Play Sound';
+                    }
+                };
+            }
+        }
+        
+        // Helper function to convert base64 to Blob
+        function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+            const byteCharacters = atob(b64Data);
+            const byteArrays = [];
+            
+            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                const slice = byteCharacters.slice(offset, offset + sliceSize);
+                
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            
+            return new Blob(byteArrays, { type: contentType });
+        }
+        
+        // UI helper functions
+        function showLoading() {
+            loading.style.display = 'block';
+            gallery.style.display = 'none';
+            emptyState.style.display = 'none';
+        }
+        
+        function hideLoading() {
+            loading.style.display = 'none';
+        }
+        
+        function showEmptyState() {
+            emptyState.style.display = 'block';
+            gallery.style.display = 'none';
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

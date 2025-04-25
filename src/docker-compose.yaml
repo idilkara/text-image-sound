@@ -9,6 +9,8 @@ services:
       - "27017:27017"  # Exposing default MongoDB port
     networks:
       - app_network
+    volumes:
+      - mongodb_data:/data/db 
 
   backend:
     build: ./backend
@@ -36,6 +38,12 @@ services:
       - backend
     networks:
       - app_network
+
+
+volumes:
+  mongodb_data:
+    driver: local
+
 
 networks:
   app_network:
